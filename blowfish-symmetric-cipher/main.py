@@ -20,7 +20,8 @@ def option_reading():
         sys.exit(2)
 
     if len(opt) < 2:
-        print("Error: expected at least 2 options: ([--fn], [--ks] and [--enc] or [--fn] and [--dec]) ", len(opt), " received")
+        print("Error: expected at least 2 options: ([--fn], [--ks] and [--enc] or [--fn] and [--dec]) ", len(opt),
+              " received")
         sys.exit(0)
 
     for (opt, arg) in opt:
@@ -59,8 +60,9 @@ def main():
     if encrypt:
         functions.write_file(file_name + ".key", bf.key)
         functions.write_file(file_name + ".iv", bf.iv)
-        cipher_text = bf.encrypt(plaintext)
-        functions.write_file(file_name + ".enc", cipher_text)
+        functions.write_file(file_name + ".enc", bf.encrypt(plaintext))
+        functions.write_file(file_name + ".hash", functions.hash_file(str(bf.key), file_name).encode())
+        print("Encryption completed")
 
     if decrypt:
         try:
@@ -71,6 +73,18 @@ def main():
 
         plain_text = bf.decrypt(cipher_text)
         functions.write_file(file_name + ".dec", plain_text)
+        print("Decryption completed")
+
+        input("This input was added to test that the file was moved on the way to the receiver. Press enter to "
+              "continue.")
+
+        print(f"Hash {file_name}: " + functions.hash_file(str(bf.key), file_name))
+        print(f"Hash {file_name}.hash: " + functions.read_file(file_name + ".hash").decode())
+
+        if functions.check_hash(str(bf.key), file_name + ".dec", functions.read_file(file_name + ".hash").decode()):
+            print("Hash check: The file was not modified")
+        else:
+            print("Hash check: The file was modified")
 
 
 if __name__ == '__main__':
