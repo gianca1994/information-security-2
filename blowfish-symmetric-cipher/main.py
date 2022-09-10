@@ -1,5 +1,6 @@
 import getopt
 import sys
+from os import urandom
 
 from src.BlowFishCTR import BlowFishCTR
 from src import functions
@@ -18,8 +19,8 @@ def option_reading():
         print(err)
         sys.exit(2)
 
-    if len(opt) < 3:
-        print("Error: expected at least 3 options: ([--fn], [--ks] and [--enc] or [--dec]) ", len(opt), " received")
+    if len(opt) < 2:
+        print("Error: expected at least 2 options: ([--fn], [--ks] and [--enc] or [--fn] and [--dec]) ", len(opt), " received")
         sys.exit(0)
 
     for (opt, arg) in opt:
@@ -32,8 +33,9 @@ def option_reading():
         elif opt == '--dec':
             decrypt = True if int(arg) == 1 else False
 
-    assert (file_name, key_size) is not None
-    assert (encrypt and not decrypt) or (decrypt and not encrypt) or (not encrypt and not decrypt)
+    assert file_name is not None
+    assert (key_size is None and encrypt is False) or (key_size is not None and encrypt is True)
+    assert encrypt != decrypt
 
     return file_name, key_size, encrypt, decrypt
 
@@ -44,7 +46,9 @@ def main():
 
     try:
         plaintext = functions.read_file(file_name)
-        bf = BlowFishCTR(key_size)
+        key_size = key_size if key_size is not None else functions.read_file(file_name + ".key")
+        iv = urandom(8) if encrypt else functions.read_file(file_name + ".iv")
+        bf = BlowFishCTR(key_size, iv)
     except FileNotFoundError:
         print("File not found")
         return
@@ -54,17 +58,19 @@ def main():
 
     if encrypt:
         functions.write_file(file_name + ".key", bf.key)
+        functions.write_file(file_name + ".iv", bf.iv)
         cipher_text = bf.encrypt(plaintext)
         functions.write_file(file_name + ".enc", cipher_text)
 
-    """
-    cipher_text = bf.encrypt(plaintext)
-    func.write_file('text_original.encrypted', cipher_text)
+    if decrypt:
+        try:
+            cipher_text = functions.read_file(file_name + ".enc")
+        except FileNotFoundError:
+            print("File not found")
+            return
 
-    cipher_text = func.read_file('text_original.encrypted')
-
-    print('Encrypted message: ', cipher_text)
-    print(bf.decrypt(cipher_text).decode())"""
+        plain_text = bf.decrypt(cipher_text)
+        functions.write_file(file_name + ".dec", plain_text)
 
 
 if __name__ == '__main__':
