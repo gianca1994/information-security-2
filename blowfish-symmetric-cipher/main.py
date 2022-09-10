@@ -44,6 +44,7 @@ def option_reading():
 def main():
     print("Blowfish Symmetric Cipher - CTR Mode")
     file_name, key_size, encrypt, decrypt = option_reading()
+    file_name = file_name if encrypt else file_name[:-4]
 
     try:
         plaintext = functions.read_file(file_name)
