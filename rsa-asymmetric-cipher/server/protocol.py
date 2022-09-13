@@ -19,6 +19,14 @@ class ServerRSA:
     def decrypt_message(self, encrypted):
         return self.cipher_decrypt.decrypt(encrypted).decode('utf-8')
 
+    @staticmethod
+    def hashed_message(message):
+        return sha512(message.encode('utf-8')).hexdigest()
+
+    @staticmethod
+    def verify_hash(message, hash):
+        return sha512(message.encode('utf-8')).hexdigest() == hash
+
 
 def protocol(client_socket, client_address):
     try:
@@ -31,19 +39,27 @@ def protocol(client_socket, client_address):
         while True:
             print("Waiting for message from client...")
             encrypted_receive = pickle.loads(client_socket.recv(2048))
-            decrypted = server_RSA.decrypt_message(encrypted_receive["message: "])
+            decrypted = server_RSA.decrypt_message(encrypted_receive["message"])
 
-            if decrypted == "/exit":
+            if server_RSA.verify_hash(decrypted, encrypted_receive["hash"]):
+                if decrypted == "/exit":
+                    print(f"Client {client_address} has disconnected.")
+                    client_socket.close()
+                    break
+
+                print(decrypted)
+
+            else:
+                print("Hashes do not match.")
                 print(f"Client {client_address} has disconnected.")
                 client_socket.close()
                 break
 
-            print(decrypted)
-
             message = input("Enter message: ")
             encrypted_send = server_RSA.encrypt_message(message)
             message_to_send = pickle.dumps({
-                "message: ": encrypted_send
+                "message": encrypted_send,
+                "hash": server_RSA.hashed_message(message)
             })
             client_socket.send(message_to_send)
 
